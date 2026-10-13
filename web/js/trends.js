@@ -10,7 +10,7 @@
 // A group (Chest, Back…) is the same over every exercise whose main muscle is in it.
 import * as store from './store.js';
 import * as cat from './catalog.js';
-import { series } from './progress.js';
+import { series, compareVolume } from './progress.js';
 import { today, addDays } from './util.js';
 
 /** Time windows, in days (null = everything). */
@@ -48,12 +48,13 @@ export function exerciseTrends(windowId) {
     if (!ser.length) continue;
     // a lift logged both with and without weight is compared within the kind of its latest session
     const weighted = ser[ser.length - 1].st.weighted;
-    ser = ser.filter(x => x.st.weighted === weighted);
+    ser = compareVolume(ser.filter(x => x.st.weighted === weighted));
     let pts = since ? ser.filter(x => x.date > since) : ser;
     if (!pts.length) continue;
     if (since) { const before = ser.filter(x => x.date <= since).pop(); if (before) pts = [before, ...pts]; }
-    const p = pts.map(x => ({ date: x.date, s: x.st.best.e1, v: x.st.volume }));
-    out.push({ id, e, pts: p, strength: change(p.map(x => x.s)), volume: change(p.map(x => x.v)), sessions: p.length, last: p[p.length - 1].date, weighted });
+    // volume set for set (or as logged; the same switch as Track), one-off short sessions left out
+    const p = pts.map(x => ({ date: x.date, s: x.st.best.e1, v: x.cv.short ? null : x.cv.vol }));
+    out.push({ id, e, pts: p, strength: change(p.map(x => x.s)), volume: change(p.map(x => x.v).filter(v => v != null)), sessions: p.length, last: p[p.length - 1].date, weighted });
   }
   return out;
 }

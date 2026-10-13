@@ -1,6 +1,6 @@
 // Exercise details (the side sheet): what it is and what it trains, where it sits in your split,
 // and your progress on it so far: charts, numbers and the session history.
-import { h, icon, fmt, fmtDate, num, autosize } from '../util.js';
+import { h, icon, fmt, fmtDate, num, autosize, seg } from '../util.js';
 import { openSheet, closeSheet, toast, confirmButton } from '../ui.js';
 import * as store from '../store.js';
 import * as cat from '../catalog.js';
@@ -8,7 +8,7 @@ import { frame } from '../tiles.js';
 import { bodyMap } from '../body.js';
 import { heat, helpedColour, setsLabel, repsText } from '../metrics.js';
 import { lineChart, comboChart, comboKey } from '../charts.js';
-import { series, bestLabel, volumeTrend, trendText, volumePoints, bestPoints, deltaChip, bestEver, setText, repsLabel, repsTitle, repsChip, avgWeightPoints, totalRepsPoints } from '../progress.js';
+import { series, bestLabel, volumeTrend, trendText, trendNote, volumePoints, lastVolumePair, bestPoints, deltaChip, bestEver, setText, repsLabel, repsTitle, repsChip, avgWeightPoints, totalRepsPoints } from '../progress.js';
 
 export function showExercise(id, ctx) {
   const e = cat.exOr(id);
@@ -99,8 +99,8 @@ export function showExercise(id, ctx) {
       h('div', { class: 'stat-tiles' },
         h('div', { title: `Heaviest weight and the most reps at it. Set on ${fmtDate(top.date, { year: true })}` }, h('span', null, `Best set · ${fmtDate(top.date)}`), h('b', null, setText(top.st))),
         (() => {
-          const tr = volumeTrend(ser), t = tr && trendText(tr);
-          return h('div', { title: !tr ? 'Which way your work is going, once there are two sessions' : tr.k === 1 ? 'Volume last time against the time before' : `Average volume of your last ${tr.k} sessions against the ${tr.k} before them` },
+          const tr = volumeTrend(ser), t = tr && trendText(tr), note = trendNote(tr);
+          return h('div', { title: (!tr ? 'Which way your work is going, once there are two sessions' : tr.k === 1 ? 'Volume last time against the time before' : `Average volume of your last ${tr.k} sessions against the ${tr.k} before them`) + (note ? `. ${note.title}` : '') },
             h('span', null, `${weighted ? 'Volume' : 'Reps'} trend`),
             t ? h('b', { class: `trend ${t.dir}` }, icon(t.dir), t.text) : h('b', { class: 'trend none' }, '—'));
         })(),
@@ -115,8 +115,13 @@ export function showExercise(id, ctx) {
         anyWeight ? h('p', { class: 'combo-note' }, 'Average weight × total reps = volume (the next chart). Both lines share one scale of change.') : null),
       // volume: the simplest "am I doing more work" line, even while the weight stays put (bodyweight lifts already have it above)
       anyWeight ? h('div', { class: 'chart-block' },
-        h('div', { class: 'chart-head' }, h('span', { class: 'h-section' }, 'Volume'), h('span', { class: 'sub' }, `weight × reps, all sets: the work you did (${u})`),
-          prev ? deltaChip(prev.st.volume, last.st.volume) : null),
+        h('div', { class: 'chart-head' }, h('span', { class: 'h-section' }, 'Volume'),
+          h('span', { class: 'sub' }, store.volumeView() === 'sets' ? `weight × reps, set for set (${u})` : `weight × reps, all sets as logged (${u})`),
+          (pair => pair ? deltaChip(pair[0], pair[1]) : null)(lastVolumePair(ser))),
+        // set for set (fewer sets never count against you) or every set as logged; Track and Trends follow the same switch
+        h('div', { class: 'vol-view-row' },
+          seg([{ value: 'sets', label: 'Set for set' }, { value: 'logged', label: 'As logged' }], store.volumeView(), v => store.setPref('volumeView', v, false), 'small vol-view'),
+          h('span', { class: 'sub' }, store.volumeView() === 'sets' ? 'Fewer sets never count against you; more count for you. A hollow dot is a one-off short session.' : 'Every set counts as it was done, so fewer sets show as less volume.')),
         lineChart(volumePoints(ser))) : null,
       h('div', { class: 'chart-block' },
         h('div', { class: 'chart-head' }, h('span', { class: 'h-section' }, weighted ? 'Est. 1RM' : 'Most reps'), h('span', { class: 'sub' }, weighted ? `each session’s strongest set as a one-rep max (${store.unit()})` : 'most reps in one set'),
@@ -131,7 +136,9 @@ export function showExercise(id, ctx) {
           const before = arr[i + 1];
           return h('tr', null,
             h('td', null, fmtDate(x.date, { year: true })),
-            h('td', { class: 'num' }, setsLabel(x.entry)),
+            h('td', { class: 'num' }, setsLabel(x.entry),
+              x.cv.short ? h('span', { class: 'cmp-note' }, 'short session: left out of the trend')
+                : x.cv.dropped.length ? h('span', { class: 'cmp-note', title: `Not counted: ${x.cv.dropped.join(', ')}` }, `best ${x.cv.counted} counted in the trend`) : null),
             h('td', { class: 'n num', title: x.st.work.w ? `Reps at ${num(x.st.work.w)}` : 'Reps' }, x.st.work.reps, before ? repsChip(before, x) : null),
             h('td', { class: 'n num' }, x.st.weighted ? fmt.format(Math.round(x.st.best.e1)) : repsText(x.st.best)),
             h('td', { class: 'act' }, h('button', { class: 'btn xs ghost icon-btn danger', type: 'button', title: 'Delete this session', 'aria-label': `Delete the session on ${fmtDate(x.date)}`,

@@ -6,7 +6,7 @@ import * as cat from '../catalog.js';
 import { frame } from '../tiles.js';
 import { sparkline } from '../charts.js';
 import { setsLabel } from '../metrics.js';
-import { series, bestLabel, bestPoints, deltaChip, bestEver, setText, volumeTrend, trendText, rollingVolumePoints } from '../progress.js';
+import { series, bestLabel, bestPoints, deltaChip, bestEver, setText, volumeTrend, trendText, trendNote, rollingVolumePoints } from '../progress.js';
 
 export function mount(root, ctx) {
   let filter = 'all', date = today();
@@ -47,14 +47,17 @@ export function mount(root, ctx) {
       // Nobody knows whether 4,275 lb or 19 reps is good; everybody knows what "+6%" means
       (() => {
         const tr = volumeTrend(ser), t = tr && trendText(tr), what = last.st.weighted ? 'volume (weight × reps, all sets)' : 'reps (all sets)';
-        const title = !tr ? 'Which way your work is going, once there are two sessions. Open progress'
-          : tr.k === 1 ? `Your ${what} last time against the time before. Open progress`
-          : `The average ${what} of your last ${tr.k} sessions against the ${tr.k} before them, so one off day doesn't swing it. Open progress`;
+        const note = trendNote(tr);
+        const title = (!tr ? 'Which way your work is going, once there are two sessions.'
+          : tr.k === 1 ? `Your ${what} last time against the time before.`
+          : `The average ${what} of your last ${tr.k} sessions against the ${tr.k} before them, so one off day doesn't swing it.`)
+          + (note ? ` ${note.title}` : '') + ' Open progress';
         return h('button', { class: 'tc-stat vol', type: 'button', title, onclick: () => ctx.openExercise(exId) },
           h('span', { class: 'k' }, last.st.weighted ? 'Volume trend' : 'Reps trend'),
           t ? h('b', { class: `num trend ${t.dir}` }, icon(t.dir), t.text) : h('b', { class: 'num trend none' }, '—'),
           h('span', { class: 'delta first' }, !tr ? 'first session' : tr.k === 1 ? 'vs last time' : `last ${tr.k}`),
-          sparkline(rollingVolumePoints(ser)));
+          sparkline(rollingVolumePoints(ser)),
+          note ? h('span', { class: 'cmp' }, note.label) : null);
       })(),
       h('button', { class: 'tc-stat', type: 'button', title: 'Open progress', onclick: () => ctx.openExercise(exId) },
         h('span', { class: 'k', title: 'The session’s strongest set as an estimated one-rep max, so sets at different weights can be compared' }, last.st.weighted ? 'Est. 1RM' : 'Most reps'), h('b', { class: 'num' }, bestLabel(last.st)),

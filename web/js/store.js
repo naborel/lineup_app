@@ -508,6 +508,8 @@ export function setCue(exId, text, { silent = false } = {}) {
 }
 export function setPref(key, value, silent = true) { state.prefs[key] = value; changedPrefs.add(key); commit(silent, false); }
 export const unit = () => state.prefs.unit || 'lb';
+/** How volume is compared: 'sets' (set for set, the default; see progress.js compareVolume) or 'logged' (as done). */
+export const volumeView = () => (state.prefs.volumeView === 'logged' ? 'logged' : 'sets');
 
 // ---------- backup ----------
 export function exportText() {

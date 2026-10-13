@@ -76,16 +76,18 @@ export function lineChart(points, { format = v => fmt.format(Math.round(v)), hei
   if (!points.length) { box.classList.add('empty'); box.append(h('span', null, 'No sessions yet')); return box; }
   const sc = scale(points);
   const gid = 'cg' + Math.random().toString(36).slice(2, 8);
-  const line = pathOf(points, sc);
-  const area = points.length > 1 ? `${line} L${sc.x(points[points.length - 1]).toFixed(2)} 100 L${sc.x(points[0]).toFixed(2)} 100 Z` : '';
+  // ghost points (a one-off short session) are dots of their own: off the line, the fill and the scale's ends kept
+  const on = points.filter(p => !p.ghost);
+  const line = on.length ? pathOf(on, sc) : '';
+  const area = on.length > 1 ? `${line} L${sc.x(on[on.length - 1]).toFixed(2)} 100 L${sc.x(on[0]).toFixed(2)} 100 Z` : '';
   const svg = s('svg', { viewBox: '0 0 100 100', preserveAspectRatio: 'none', 'aria-hidden': 'true' },
     s('defs', null, s('linearGradient', { id: gid, x1: 0, y1: 0, x2: 0, y2: 1 },
       s('stop', { offset: 0, 'stop-color': 'var(--series)', 'stop-opacity': 0.22 }), s('stop', { offset: 1, 'stop-color': 'var(--series)', 'stop-opacity': 0 }))),
     [25, 50, 75].map(y => s('line', { x1: 0, x2: 100, y1: y, y2: y, class: 'grid' })),
     area ? s('path', { d: area, fill: `url(#${gid})` }) : null,
-    points.length > 1 ? s('path', { d: line, class: 'ln' }) : null);
+    on.length > 1 ? s('path', { d: line, class: 'ln' }) : null);
   const plot = h('div', { class: 'plot' }, svg);
-  const dots = points.map(p => h('i', { class: 'pt', style: { left: sc.x(p) + '%', top: sc.y(p) + '%' } }));
+  const dots = points.map(p => h('i', { class: `pt${p.ghost ? ' ghost' : ''}`, style: { left: sc.x(p) + '%', top: sc.y(p) + '%' } }));
   const cross = h('div', { class: 'cross' });
   const tip = h('div', { class: 'tip' });
   plot.append(...dots, cross, tip);

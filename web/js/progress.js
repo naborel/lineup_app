@@ -14,8 +14,41 @@ import { stats, setsLabel, setLabel, change, heavier, repsText } from './metrics
 /** Sessions with at least one completed set, oldest first: [{date, entry, st}] */
 export function series(exId) {
   const single = store.isSingle(exId);
-  return store.entriesOf(exId).map(entry => ({ date: entry.date, entry, st: stats(entry, single) })).filter(x => x.st.n > 0);
+  return compareVolume(store.entriesOf(exId).map(entry => ({ date: entry.date, entry, st: stats(entry, single) })).filter(x => x.st.n > 0));
 }
+
+/**
+ * Volume compared set for set, so the trend follows how you did, not how many sets you planned. Doing fewer sets
+ * never counts against you; doing more counts for you:
+ *   - an earlier session counts no more sets than you've done in any session since: its best ones (the most
+ *     weight × reps). Going from 3 sets to 2 compares your 2 with the best 2 of each earlier session;
+ *   - a one-off short session (fewer sets than the sessions either side of it, or, while it's the latest, than both
+ *     of the two before it, which includes a workout still being logged) is shown as logged and left out of the
+ *     trend. Going back to your usual sets after a one-off extra set isn't short;
+ *   - more sets count in full for as long as you keep doing them (a one-off extra set counts while it's the latest).
+ * 'logged' (the switch in the status menu or on the Volume chart) counts every set as it was done.
+ * Adds x.cv = {vol, n: sets done, counted, short, dropped: [the sets not counted, as text]} to each session.
+ */
+export function compareVolume(ser, mode = store.volumeView()) {
+  const n = ser.map(x => x.st.setVols.length);
+  const sets = mode === 'sets';
+  ser.forEach((x, i) => {
+    const last = i === ser.length - 1;
+    x.cv = { n: n[i], short: sets && i > 0 && (last ? n[i] < Math.min(n[i - 1], i > 1 ? n[i - 2] : Infinity) : n[i] < n[i - 1] && n[i] < n[i + 1]) };
+  });
+  // walking back from the latest: cap = the fewest sets in any later session that isn't a one-off
+  let cap = Infinity;
+  for (let i = ser.length - 1; i >= 0; i--) {
+    const c = ser[i].cv;
+    const best = [...ser[i].st.setVols].sort((a, b) => b.vol - a.vol);
+    c.counted = sets && !c.short ? Math.min(n[i], cap) : n[i];
+    c.vol = best.slice(0, c.counted).reduce((a, s) => a + s.vol, 0);
+    c.dropped = best.slice(c.counted).map(s => s.label);
+    if (sets && !c.short) cap = Math.min(cap, n[i]);
+  }
+  return ser;
+}
+const counts = ser => ser.filter(x => !x.cv.short);
 
 /**
  * The session holding your best set: the heaviest weight, and the most reps at that weight.
@@ -69,12 +102,26 @@ export const totalRepsPoints = ser => ser.map(x => ({ date: x.date, y: x.st.reps
  * Volume is weight × reps over all sets (all the reps for bodyweight work).
  */
 export function volumeTrend(ser) {
-  const n = ser.length;
+  const latest = ser[ser.length - 1];
+  const use = counts(ser), n = use.length;
   if (n < 2) return null;
   const k = Math.min(3, Math.floor(n / 2));
-  const mean = xs => xs.reduce((a, x) => a + x.st.volume, 0) / xs.length;
-  const recent = mean(ser.slice(n - k)), before = mean(ser.slice(n - 2 * k, n - k));
-  return before > 0 ? { pct: (recent / before - 1) * 100, k } : null;
+  const mean = xs => xs.reduce((a, x) => a + x.cv.vol, 0) / xs.length;
+  const recent = mean(use.slice(n - k)), before = mean(use.slice(n - 2 * k, n - k));
+  if (!(before > 0)) return null;
+  // what to say about it: the latest left out, or the earlier sessions counted on fewer sets than they had
+  const trimmed = use.slice(n - 2 * k, n - k).filter(x => x.cv.counted < x.cv.n);
+  const note = latest && latest.cv.short ? { kind: 'short', n: latest.cv.n, was: ser[ser.length - 2].cv.n }
+    : trimmed.length ? { kind: 'trimmed', n: Math.min(...trimmed.map(x => x.cv.counted)) } : null;
+  if (note && note.kind === 'short') note.was = Math.min(...ser.slice(-3, -1).map(x => x.cv.n));
+  return { pct: (recent / before - 1) * 100, k, note };
+}
+/** The trend's note as a short label and a sentence, or null. */
+export function trendNote(tr) {
+  if (!tr || !tr.note) return null;
+  const s = n => `${n} ${n === 1 ? 'set' : 'sets'}`;
+  if (tr.note.kind === 'short') return { label: 'fewer sets: left out', title: `Your latest session has ${s(tr.note.n)}, fewer than the ${tr.note.was} before it. A one-off short session isn’t counted against you; if you keep doing ${s(tr.note.n)}, earlier sessions will be compared on their best ${tr.note.n}.` };
+  return { label: `best ${s(tr.note.n)} each`, title: `Compared set for set: you do ${s(tr.note.n)} now, so earlier sessions count their best ${tr.note.n}. Doing fewer sets never counts against you; doing more counts for you.` };
 }
 /** "↑ 6.2%" / "↓ 12%" / "steady" (within 1%): the volume trend as the Track card shows it. */
 export function trendText(t) {
@@ -83,12 +130,19 @@ export function trendText(t) {
   return { dir, text: dir === 'flat' ? 'steady' : `${t.pct > 0 ? '+' : '−'}${a < 10 ? num(Math.round(a * 10) / 10) : Math.round(a)}%` };
 }
 /** Volume per session, each point the average of it and up to two sessions before (the line the trend follows). */
-export const rollingVolumePoints = ser => ser.map((x, i) => {
-  const w = ser.slice(Math.max(0, i - 2), i + 1);
-  return { date: x.date, y: w.reduce((a, s) => a + s.st.volume, 0) / w.length };
-});
+export const rollingVolumePoints = ser => { const use = counts(ser); return use.map((x, i) => {
+  const w = use.slice(Math.max(0, i - 2), i + 1);
+  return { date: x.date, y: w.reduce((a, s) => a + s.cv.vol, 0) / w.length };
+}); };
 
-export const volumePoints = ser => ser.map(x => ({ date: x.date, y: x.st.volume, tip: setsLabel(x.entry) }));
+/** Volume per session as compared; a one-off short session is a hollow dot off the line. */
+export const volumePoints = ser => ser.map(x => ({
+  date: x.date, y: x.cv.vol, ghost: x.cv.short,
+  tip: x.cv.short ? `${setsLabel(x.entry)} · fewer sets than the sessions around it: left out of the trend`
+    : x.cv.dropped.length ? `${setsLabel(x.entry)} · best ${x.cv.counted} counted (you do ${x.cv.counted} now)` : setsLabel(x.entry),
+}));
+/** The latest session's volume against the one before it that counts. */
+export const lastVolumePair = ser => { const use = counts(ser); return use.length > 1 ? [use[use.length - 2].cv.vol, use[use.length - 1].cv.vol] : null; };
 export const bestPoints = ser => ser.map(x => ({ date: x.date, y: x.st.best.e1, tip: setLabel(x.st.best) }));
 
 /** ▲ +6% / ▼ −3% / – same, comparing the last two sessions. */

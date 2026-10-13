@@ -45,7 +45,7 @@ let quiet = true;
 for (const p of [fresh, old, ff, sf]) quiet = quiet && await notice(p).count() === 0 && await p.locator('#save-status .bk').count() === 0 && await txt(pill(p)) === 'Saved in this browser';
 ok('a new browser, old data never backed up, Firefox, Safari: no notes on the page, nothing on the status but “Saved”', quiet);
 const m1 = await openMenu(old);
-ok('the status menu is as it was, plus which build this copy is', /^Your data lives in this browser Save a backup file \.json Load a backup file… Weights in lb Weights in kg Clear everything This copy of Lineup was built \w{3} \d+, \d{4}/.test(m1), m1);
+ok('the status menu is as it was, plus which build this copy is', /^Your data lives in this browser Save a backup file \.json Load a backup file… Weights in lb Weights in kg Volume set for set Volume as logged Clear everything This copy of Lineup was built \w{3} \d+, \d{4}/.test(m1), m1);
 await shot(old, 'd2-menu.png');
 const [dl] = await Promise.all([old.waitForEvent('download'), old.locator('.pop .opt', { hasText: 'Save a backup file' }).click()]);
 ok('a backup file still saves everything', JSON.parse(fs.readFileSync(await dl.path(), 'utf8')).log.length === 2);

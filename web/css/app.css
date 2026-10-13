@@ -810,6 +810,14 @@ input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-o
 .chart .pt.on { scale: 1.5; background: #fff; }
 .chart.dense .pt { opacity: 0; transition: opacity var(--t-fast), scale 160ms var(--spring); }
 .chart.dense .pt.on, .chart.dense .pt:last-of-type { opacity: 1; }
+/* a one-off short session: a hollow dot off the line (it isn't counted in the trend) */
+.chart .pt.ghost { background: #1a1c26; box-shadow: inset 0 0 0 1.6px var(--series), 0 0 0 2px #1a1c26; }
+.chart .pt.ghost.on { background: #1a1c26; box-shadow: inset 0 0 0 1.6px #fff, 0 0 0 2px #1a1c26; }
+.chart.dense .pt.ghost { opacity: 1; }
+/* the set-for-set notes: on the Track card's trend, and in the history */
+.tc-stat .cmp { display: block; margin-top: 2px; font-size: 10.5px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hist .cmp-note { display: block; font-size: 11px; color: var(--ink-3); }
+.chart-head .vol-view { margin-left: auto; }
 .chart .cross { position: absolute; top: 0; bottom: 0; width: 1px; background: rgba(255, 255, 255, 0.22); opacity: 0; pointer-events: none; }
 .chart .cross.on { opacity: 1; }
 .chart .tip, .combo .tip {
@@ -1113,3 +1121,5 @@ input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-o
 .opt-none svg { width: 15px; height: 15px; color: var(--good); }
 .opt-under .sub { margin: 4px 0 8px; font-size: 12px; color: var(--ink-3); }
 .opt-under .chip b { margin-left: 6px; color: var(--ink-1); font-weight: 560; }
+.vol-view-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 2px 0 10px; }
+.vol-view-row .sub { font-size: 11.5px; color: var(--ink-3); flex: 1; min-width: 200px; }

@@ -144,7 +144,9 @@ export function stats(entry, single = false) {
   }
   const atTop = heavy ? sets.filter(x => x.w === heavy.w) : [];
   const work = { w: heavy ? heavy.w : 0, reps: atTop.reduce((a, x) => a + x.total, 0), sets: atTop.map(repsText) };
-  return { n: sets.length, reps, volume, heavy, work, avgW: weighted && reps ? volume / reps : 0, best, top, weighted };
+  // each set's share of the volume, for comparing sessions set for set (progress.js compareVolume)
+  const setVols = sets.map(x => ({ vol: weighted ? x.w * x.total : x.total, label: weighted ? `${num(x.w)} × ${repsText(x)}` : repsText(x) }));
+  return { n: sets.length, reps, volume, heavy, work, avgW: weighted && reps ? volume / reps : 0, best, top, weighted, setVols };
 }
 
 /** Is set a a better "best set" than b? Heavier wins; at the same weight, more reps wins. */
