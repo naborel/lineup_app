@@ -71,9 +71,10 @@ export function mount(root, ctx) {
     const setsBox = h('div', { class: 'tc-sets' });
     const lastLine = h('div', { class: 'tc-last sub' });
     let stat = statsBlock(exId);
-    const inputs = [];   // [{w, r}] input elements per set
+    const inputs = [];   // [{w, r, l}] input elements per set (l: left reps, single-arm/leg lifts only)
+    const single = store.isSingle(exId), kind = cat.sideKind(e);
 
-    const read = () => inputs.map(x => ({ w: x.w.value, r: x.r.value }));
+    const read = () => inputs.map(x => ({ w: x.w.value, r: x.r.value, ...(x.l ? { l: x.l.value } : {}) }));
     // what you type is written to storage straight away; only the numbers beside it wait for a pause in typing
     const refresh = debounce(() => { const next = statsBlock(exId); stat.replaceWith(next); stat = next; mark(); }, 350);
     const save = () => { store.setEntry(exId, date, read(), { silent: true, now: true }); refresh(); };
@@ -87,11 +88,16 @@ export function mount(root, ctx) {
       const n = inputs.length;
       const ph = last && last.sets[n] ? last.sets[n] : last && last.sets.length ? last.sets[last.sets.length - 1] : null;
       const w = h('input', { class: 'input', type: 'number', inputMode: 'decimal', step: 'any', min: 0, placeholder: ph && ph.w != null ? num(ph.w) : store.unit(), value: vals && vals.w != null ? num(vals.w) : '', 'aria-label': `Set ${n + 1} weight`, oninput: save });
-      const r = h('input', { class: 'input', type: 'number', inputMode: 'numeric', step: 1, min: 0, placeholder: ph && ph.r != null ? String(ph.r) : 'reps', value: vals && vals.r != null ? String(vals.r) : '', 'aria-label': `Set ${n + 1} reps`, oninput: save });
+      const r = h('input', { class: 'input', type: 'number', inputMode: 'numeric', step: 1, min: 0, placeholder: ph && ph.r != null ? String(ph.r) : single ? 'R' : 'reps', value: vals && vals.r != null ? String(vals.r) : '', 'aria-label': `Set ${n + 1} reps${single ? ', right' : ''}`, oninput: save });
+      // single arm or leg: right reps, then left (hint: last time's left, or its one number when it had no sides)
+      const l = single ? h('input', { class: 'input', type: 'number', inputMode: 'numeric', step: 1, min: 0, placeholder: ph && (ph.l ?? ph.r) != null ? String(ph.l ?? ph.r) : 'L', value: vals && vals.l != null ? String(vals.l) : '', 'aria-label': `Set ${n + 1} reps, left`, oninput: save }) : null;
       // typing reps with the weight left blank: assume the weight shown as the hint (same as last time)
-      r.addEventListener('change', () => { if (r.value && !w.value && ph && ph.w != null) { w.value = num(ph.w); save(); } });
-      inputs.push({ w, r });
-      const row = h('label', { class: 'setin' }, h('span', { class: 'n' }, n + 1), w, h('span', { class: 'x' }, '×'), r);
+      for (const box of [r, l].filter(Boolean)) box.addEventListener('change', () => { if (box.value && !w.value && ph && ph.w != null) { w.value = num(ph.w); save(); } });
+      inputs.push({ w, r, l });
+      const row = single
+        ? h('div', { class: 'setin sides' }, h('span', { class: 'n' }, n + 1), w, h('span', { class: 'x' }, '×'),
+          h('label', { class: 'side' }, h('span', null, 'R'), r), h('label', { class: 'side' }, h('span', null, 'L'), l))
+        : h('label', { class: 'setin' }, h('span', { class: 'n' }, n + 1), w, h('span', { class: 'x' }, '×'), r);
       setsBox.insertBefore(row, addBtn);
       if (focus) w.focus();
     };
@@ -102,7 +108,10 @@ export function mount(root, ctx) {
     const same = last && !entry ? h('button', { class: 'btn xs', type: 'button', title: 'Fill in the same sets as last time, then change what moved',
       onclick: () => {
         while (inputs.length < last.sets.length) addRow(null, false);
-        last.sets.forEach((x, k) => { inputs[k].w.value = x.w != null ? num(x.w) : ''; inputs[k].r.value = x.r != null ? String(x.r) : ''; });
+        last.sets.forEach((x, k) => {
+          inputs[k].w.value = x.w != null ? num(x.w) : ''; inputs[k].r.value = x.r != null ? String(x.r) : '';
+          if (inputs[k].l) inputs[k].l.value = (x.l ?? x.r) != null ? String(x.l ?? x.r) : '';
+        });
         save.flush(); same.remove();
       } }, icon('repeat'), 'Same as last') : null;
     lastLine.append(...(last ? [h('span', null, `Last · ${fmtDate(last.date)} (${daysAgo(last.date)}):`), h('b', { class: 'num' }, setsLabel(last)), same].filter(Boolean) : ['First time logging this one.']));
@@ -135,7 +144,9 @@ export function mount(root, ctx) {
       h('header', { class: 'tc-head' },
         h('button', { class: 'tc-id', type: 'button', title: 'Details and progress', onclick: () => ctx.openExercise(exId) },
           frame(e, { size: 52 }),
-          h('span', null, h('span', { class: 'nm' }, e.name), h('span', { class: 'sub' }, [where, planned ? `${planned} sets planned` : null].filter(Boolean).join(' · ')))),
+          h('span', null, h('span', { class: 'nm' }, e.name),
+            h('span', { class: 'sub' }, single ? h('span', { class: 'side-tag', title: 'Each set: weight × right reps and left reps' }, `Single ${kind}`) : null,
+              [where, planned ? `${planned} sets planned` : null].filter(Boolean).join(' · ')))),
         h('span', { class: 'tc-right' }, addCue, badge)),
       h('div', { class: 'tc-body' }, h('div', { class: 'tc-entry' }, cueRow, setsBox, lastLine), stat));
     return el;

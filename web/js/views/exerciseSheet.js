@@ -6,7 +6,7 @@ import * as store from '../store.js';
 import * as cat from '../catalog.js';
 import { frame } from '../tiles.js';
 import { bodyMap } from '../body.js';
-import { heat, helpedColour, setsLabel } from '../metrics.js';
+import { heat, helpedColour, setsLabel, repsText } from '../metrics.js';
 import { lineChart, comboChart, comboKey } from '../charts.js';
 import { series, bestLabel, volumeTrend, trendText, volumePoints, bestPoints, deltaChip, bestEver, setText, repsLabel, repsTitle, repsChip, avgWeightPoints, totalRepsPoints } from '../progress.js';
 
@@ -50,10 +50,21 @@ export function showExercise(id, ctx) {
           : h('span', { class: 'chip muted' }, 'Not in your split'),
         e.gone ? null : h('button', { class: `btn sm${isFav ? '' : ' primary'}`, type: 'button', disabled: isFav && pl.length > 0, title: isFav && pl.length ? 'It’s in your split, so it stays a favorite' : null,
           onclick: () => store.toggleFavorite(id) }, icon(isFav ? 'starFill' : 'star'), isFav ? 'One of your favorites' : 'Add to your favorites'),
-        e.gone ? null : h('button', { class: 'btn sm', type: 'button', title: 'A copy under a new name, tracked on its own: single-arm, another grip, a particular machine', onclick: () => editCustom(null, ctx, { from: id }) }, icon('copy'), 'Make a variation'),
-        e.custom ? h('button', { class: 'btn sm', type: 'button', onclick: () => editCustom(id, ctx) }, icon('note'), 'Edit') : null),
+        e.gone ? null : h('button', { class: 'btn sm', type: 'button', title: 'A copy under a new name, tracked on its own: another grip, a particular machine', onclick: () => editCustom(null, ctx, { from: id }) }, icon('copy'), 'Make a variation'),
+        e.custom ? h('button', { class: 'btn sm', type: 'button', onclick: () => editCustom(id, ctx) }, icon('note'), 'Edit') : null,
+        e.gone ? null : sideToggle()),
       e.gone ? h('span') : h('div', { class: 'im-row' }, h('span', null, 'Days'), days));
   };
+
+  // single arm / single leg: on, each set on Track is weight × right reps and left reps
+  function sideToggle() {
+    const on = store.isSingle(id), kind = cat.sideKind(e);
+    return h('button', { class: `btn sm side-tog${on ? ' on' : ''}`, type: 'button', 'aria-pressed': String(on),
+      title: on ? `Logged one ${kind} at a time: weight × right reps and left reps for each set. Click if it works both ${kind}s together.`
+        : `Click if this works one ${kind} at a time: each set gets right and left reps.`,
+      onclick: () => store.setSingle(id, !on) },   // the sheet redraws on any change
+      on ? icon('check') : null, `Single ${kind}`);
+  }
 
   const renderProgress = () => {
     const ser = series(id);
@@ -122,7 +133,7 @@ export function showExercise(id, ctx) {
             h('td', null, fmtDate(x.date, { year: true })),
             h('td', { class: 'num' }, setsLabel(x.entry)),
             h('td', { class: 'n num', title: x.st.work.w ? `Reps at ${num(x.st.work.w)}` : 'Reps' }, x.st.work.reps, before ? repsChip(before, x) : null),
-            h('td', { class: 'n num' }, x.st.weighted ? fmt.format(Math.round(x.st.best.e1)) : x.st.best.r),
+            h('td', { class: 'n num' }, x.st.weighted ? fmt.format(Math.round(x.st.best.e1)) : repsText(x.st.best)),
             h('td', { class: 'act' }, h('button', { class: 'btn xs ghost icon-btn danger', type: 'button', title: 'Delete this session', 'aria-label': `Delete the session on ${fmtDate(x.date)}`,
               onclick: () => { const undo = store.deleteEntry(x.entry.id); toast(`Deleted ${e.name} on ${fmtDate(x.date)}`, { label: 'Undo', fn: undo }); } }, icon('trash'))));
         }))));

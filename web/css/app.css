@@ -668,6 +668,17 @@ input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-o
 .setin .input { width: 60px; height: 34px; padding: 0 4px; text-align: center; border-radius: 9px; font-size: 14.5px; font-variant-numeric: tabular-nums; }
 .setin .input::placeholder { color: var(--ink-4); }
 .tcard.logged .setin { background: rgba(127, 224, 204, 0.04); box-shadow: inset 0 0 0 1px rgba(127, 224, 204, 0.16); }
+/* single arm / single leg: weight × right and left reps, each box with a small R or L */
+.setin.sides { gap: 5px; }
+.setin .side { display: inline-flex; align-items: center; gap: 3px; }
+.setin .side span { font: 600 9.5px var(--font-mono); color: var(--ink-3); letter-spacing: 0.04em; }
+.setin .side .input { width: 48px; }
+.side-tag { display: inline-flex; align-items: center; height: 18px; margin-right: 7px; padding: 0 7px; border-radius: 6px; font-size: 11px; font-weight: 520; color: var(--ink-2); background: rgba(255, 255, 255, 0.06); box-shadow: inset 0 0 0 1px var(--hair); vertical-align: 1px; }
+.btn.side-tog.on { color: var(--ink-1); background: rgba(154, 165, 255, 0.14); box-shadow: inset 0 0 0 1px rgba(154, 165, 255, 0.35); }
+.btn.side-tog.on svg { color: #b3baff; }
+.tbl .lr { display: inline-flex; align-items: center; gap: 3px; }
+.tbl .lr .sl { color: var(--ink-4); }
+.tbl .lr .cell.n { width: 46px; }
 .tc-last { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; }
 .tc-last b { color: var(--ink-1); font-weight: 540; }
 .tc-stats { display: flex; gap: 8px; align-self: stretch; align-items: stretch; }
@@ -1042,6 +1053,7 @@ input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-o
   .tc-stat.best { grid-column: 1 / -1; grid-template-columns: minmax(0, 1fr) auto; }
   .tc-stat .spark { width: 62px; }
   .setin .input { width: 56px; height: 38px; font-size: 16px; }   /* 16px keeps phones from zooming on focus */
+  .setin .side .input { width: 44px; }
   .input, .cell, .day-name, .note-body { font-size: 16px; }
   .sheet { top: 8px; right: 8px; bottom: 8px; left: 8px; width: auto; padding: 18px 16px 24px; }
   .stat-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }

@@ -97,6 +97,28 @@ export function heat(score) {
 export const e1rm = (w, r) => (r <= 1 ? w : w * (1 + r / 30));
 
 /**
+ * One set as it's measured. A single-arm or single-leg set has reps for each side, r (right) and l (left):
+ *   total = both sides together (what volume and total reps count), r = reps per side (the average of the two:
+ *   what the best set and Est. 1RM use, so progress on either side shows), R and L the sides themselves.
+ * single: the lift is one-sided. Sets logged before it was marked that way (one number) count for each side,
+ * which is how one-arm lifts are usually written down (70 × 10 = 10 each arm).
+ * → {w, r, total, R, L, sides} or null when the set has no reps.
+ */
+export function setOf(x, single = false) {
+  if (!x) return null;
+  const w = +x.w || 0;
+  const R = x.r == null || x.r === '' ? null : +x.r, L = x.l == null || x.l === '' ? null : +x.l;
+  if (L != null || single) {
+    const r_ = R ?? L, l_ = L ?? R;
+    if (!(r_ > 0 || l_ > 0)) return null;
+    return { w, r: (r_ + l_) / 2, total: r_ + l_, R: r_, L: l_, sides: L != null };
+  }
+  return R > 0 ? { w, r: R, total: R, R: null, L: null, sides: false } : null;
+}
+/** Reps as they're written: "10", or "10/9" for right and left. */
+export const repsText = x => (x.sides ? `${x.R}/${x.L}` : String(x.r));
+
+/**
  * entry: {sets: [{w, r}]} → {n, reps, volume, heavy: {w, r}, work: {w, reps, sets}, best: {w, r, e1}, top: {w, r, load}, weighted}
  *   heavy = the "best set" as lifters say it: the heaviest weight, and the most reps done at that weight
  *   work  = the session's working weight (the heaviest) and the reps done at it, added over its sets:
@@ -107,37 +129,37 @@ export const e1rm = (w, r) => (r <= 1 ? w : w * (1 + r / 30));
  * Sets without reps are ignored. A session with no weight on any set is treated as bodyweight:
  * volume is total reps and both "best" sets are the one with most reps.
  */
-export function stats(entry) {
-  const sets = (entry.sets || []).filter(x => x && +x.r > 0).map(x => ({ w: +x.w || 0, r: +x.r }));
+export function stats(entry, single = false) {
+  const sets = (entry.sets || []).map(x => setOf(x, single)).filter(Boolean);
   const weighted = sets.some(x => x.w > 0);
   let volume = 0, reps = 0, best = null, top = null, heavy = null;
   for (const x of sets) {
-    if (!heavy || heavier(x, heavy)) heavy = { w: x.w, r: x.r };
-    reps += x.r;
-    volume += weighted ? x.w * x.r : x.r;
+    if (!heavy || heavier(x, heavy)) heavy = x;
+    reps += x.total;
+    volume += weighted ? x.w * x.total : x.total;
     const e1 = weighted ? e1rm(x.w, x.r) : x.r;
-    if (!best || e1 > best.e1) best = { w: x.w, r: x.r, e1 };
-    const load = weighted ? x.w * x.r : x.r;
-    if (!top || load > top.load) top = { w: x.w, r: x.r, load };
+    if (!best || e1 > best.e1) best = { ...x, e1 };
+    const load = weighted ? x.w * x.total : x.total;
+    if (!top || load > top.load) top = { ...x, load };
   }
-  const atTop = heavy ? sets.filter(x => x.w === heavy.w).map(x => x.r) : [];
-  const work = { w: heavy ? heavy.w : 0, reps: atTop.reduce((a, r) => a + r, 0), sets: atTop };
+  const atTop = heavy ? sets.filter(x => x.w === heavy.w) : [];
+  const work = { w: heavy ? heavy.w : 0, reps: atTop.reduce((a, x) => a + x.total, 0), sets: atTop.map(repsText) };
   return { n: sets.length, reps, volume, heavy, work, avgW: weighted && reps ? volume / reps : 0, best, top, weighted };
 }
 
 /** Is set a a better "best set" than b? Heavier wins; at the same weight, more reps wins. */
 export const heavier = (a, b) => a.w > b.w || (a.w === b.w && a.r > b.r);
 
-/** "135 × 12, 11, 8"  ·  "135×12 · 140×10"  ·  "12, 11, 8" (bodyweight) */
+/** "135 × 12, 11, 8"  ·  "135×12 · 140×10"  ·  "12, 11, 8" (bodyweight)  ·  "50 × 10/9, 9/9" (right/left) */
 export function setsLabel(entry) {
-  const sets = (entry.sets || []).filter(x => x && +x.r > 0);
+  const sets = (entry.sets || []).map(x => setOf(x)).filter(Boolean);
   if (!sets.length) return '';
-  const ws = [...new Set(sets.map(x => +x.w || 0))];
-  if (ws.length === 1) return (ws[0] ? `${num(ws[0])} × ` : '') + sets.map(x => x.r).join(', ');
-  return sets.map(x => `${num(+x.w || 0)}×${x.r}`).join(' · ');
+  const ws = [...new Set(sets.map(x => x.w))];
+  if (ws.length === 1) return (ws[0] ? `${num(ws[0])} × ` : '') + sets.map(repsText).join(', ');
+  return sets.map(x => `${num(x.w)}×${repsText(x)}`).join(' · ');
 }
 
-export const setLabel = x => (x.w ? `${num(x.w)} × ${x.r}` : `${x.r} reps`);
+export const setLabel = x => (x.w ? `${num(x.w)} × ${repsText(x)}` : `${repsText(x)} reps`);
 
 /** Percent change from a to b, or null when it can't be said. */
 export const change = (a, b) => (a > 0 && b != null ? (b - a) / a * 100 : null);

@@ -84,6 +84,12 @@ Each card shows three things: Best set, Volume trend and Est. 1RM.
 
 Going from 11, 10, 6 to 12, 11, 8 at the same weight raises all three. Sessions with no weight are treated as bodyweight: the reps are all of them and the best set is the one with the most reps. The volume itself (4,275 lb) isn't shown on the card, because nobody knows whether that's good; the trend is. It has its own chart in the details.
 
+**Single arm, single leg.** Lifts done one side at a time (a one-arm dumbbell row, a Bulgarian split squat, alternating curls) carry a small *Single arm* or *Single leg* label under their name, and each set is weight × **R** reps and **L** reps: `70 × 10/9`. They're found by name; the **Single arm / Single leg** switch in an exercise's details turns it on or off for that lift. How they're measured:
+- Volume and total reps count both sides: 70 × 10/9 is 19 reps and 1,330 lb.
+- Best set and Est. 1RM use the reps per side, the average of the two (9.5 here), so progress on either side shows. The best set is written with both sides: `75 × 9/8`.
+- Sets logged before a lift was marked single (one number) count for each side, the way one-arm lifts are usually written down: 70 × 10 means 10 each arm.
+- The Table shows a right and a left box for these sets, and the CSV gives `reps` (the total) plus `reps_right` and `reps_left`.
+
 **Archive**, at the bottom, holds exercises that have history but aren't in the split. Put one back in a day and it carries on from where it stopped.
 
 ### Trends

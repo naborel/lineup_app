@@ -2,7 +2,7 @@
 // Everything is saved in this browser (localStorage). Export a backup from the status menu to move it
 // between your computer and your phone.
 import { uid, debounce, today, normalize } from './util.js';
-import { setCustom, index, ex, all, muscle, EQ, KIND } from './catalog.js';
+import { setCustom, index, ex, all, muscle, EQ, KIND, autoSingle } from './catalog.js';
 
 // the app's first name was Liftboard; the key stays so saved data carries over
 const KEY = 'liftboard-state';
@@ -22,6 +22,8 @@ const fresh = () => {
   favorites: [],      // exercise ids you like, whether or not they're in the split
   custom: [],         // [{id, name, eq, kind, mech, p: [zones], s: [zones]}]
   log: [],            // [{id, date: 'YYYY-MM-DD', ex, sets: [{w, r}]}]  one entry per exercise per day
+                      //   a single-arm/leg set also has l: {w, r: right reps, l: left reps}
+  single: {},         // exercise id → true/false where you've changed the automatic single-arm/leg label
   cues: {},           // exercise id → a one-line cue shown on its Track card ("close-grip MAG handle")
   notes: {},          // exercise id → your longer notes (seat height, setup), kept in its details
   prefs: { unit: 'lb', lastDay: 0 },
@@ -66,7 +68,8 @@ function normalise(s) {
   delete out.options;
   out.custom = (s.custom || []).filter(c => c && c.id && c.name && Array.isArray(c.p) && c.p.length);
   out.log = (s.log || []).filter(e => e && e.ex && /^\d{4}-\d{2}-\d{2}$/.test(e.date || '') && Array.isArray(e.sets))
-    .map(e => ({ id: e.id || uid('l'), date: e.date, ex: e.ex, sets: e.sets.map(x => ({ w: x && x.w != null && x.w !== '' ? +x.w : null, r: x && x.r != null && x.r !== '' ? +x.r : null })) }));
+    .map(e => ({ id: e.id || uid('l'), date: e.date, ex: e.ex, sets: e.sets.map(x => ({ w: x && x.w != null && x.w !== '' ? +x.w : null, r: x && x.r != null && x.r !== '' ? +x.r : null, ...(x && x.l != null && x.l !== '' ? { l: +x.l } : {}) })) }));
+  out.single = Object.fromEntries(Object.entries(s.single && typeof s.single === 'object' ? s.single : {}).filter(([, v]) => typeof v === 'boolean'));
   out.notes = s.notes && typeof s.notes === 'object' ? { ...s.notes } : {};
   out.cues = Object.fromEntries(Object.entries(s.cues && typeof s.cues === 'object' ? s.cues : {}).map(([k, v]) => [k, oneLine(v)]).filter(([, v]) => v));
   return out;
@@ -418,12 +421,13 @@ export function archivedIds() {
   for (const e of state.log) if (!active.has(e.ex) && (!last.has(e.ex) || last.get(e.ex) < e.date)) last.set(e.ex, e.date);
   return [...last.entries()].sort((a, b) => (a[1] < b[1] ? 1 : -1)).map(x => x[0]);
 }
-const emptySet = x => !x || ((x.w == null || x.w === '') && (x.r == null || x.r === ''));
+const emptySet = x => !x || ((x.w == null || x.w === '') && (x.r == null || x.r === '') && (x.l == null || x.l === ''));
+const numOr = v => (v === '' || v == null || Number.isNaN(+v) ? null : +v);
 
 /** Write the sets for one exercise on one date. Trailing blank sets are dropped; an all-blank entry is removed. */
 /** now: write it to storage straight away (sets as they're typed, so closing the tab a moment later loses nothing) */
 export function setEntry(exId, date, sets, { silent = false, now = false } = {}) {
-  const clean = sets.map(x => ({ w: x.w === '' || x.w == null || Number.isNaN(+x.w) ? null : +x.w, r: x.r === '' || x.r == null || Number.isNaN(+x.r) ? null : +x.r }));
+  const clean = sets.map(x => ({ w: numOr(x.w), r: numOr(x.r), ...(numOr(x.l) != null ? { l: numOr(x.l) } : {}) }));
   while (clean.length && emptySet(clean[clean.length - 1])) clean.pop();
   const cur = entryOn(exId, date);
   if (!clean.length) { if (cur) state.log = state.log.filter(e => e !== cur); }
@@ -447,6 +451,7 @@ export function updateSet(entryId, idx, patch) {
   const e = state.log.find(x => x.id === entryId);
   if (!e || !e.sets[idx]) return;
   Object.assign(e.sets[idx], patch);
+  if (e.sets[idx].l == null) delete e.sets[idx].l;
   commit(true);
 }
 /** Move one set to another date (the table lets you fix a mistyped day). */
@@ -465,6 +470,19 @@ export function addSet(exId, date, setRow) {
     const target = entryOn(exId, date);
     if (target) target.sets.push(setRow); else state.log.push({ id: uid('l'), date, ex: exId, sets: [setRow] });
   });
+}
+
+// ---------- single arm / single leg ----------
+/** Is this lift done one arm or leg at a time (each set logged as right and left reps)? Your choice, or the name's. */
+export function isSingle(exId) {
+  if (typeof state.single[exId] === 'boolean') return state.single[exId];
+  const e = ex(exId);
+  return !!(e && autoSingle(e));
+}
+export function setSingle(exId, on) {
+  const e = ex(exId);
+  if (e && !!autoSingle(e) === on) delete state.single[exId]; else state.single[exId] = on;
+  commit();
 }
 
 // ---------- notes & prefs ----------
@@ -498,14 +516,18 @@ export const isEmpty = () => !state.log.length && !state.favorites.length && !st
 /** One row per set, for the table page and CSV export. */
 export function setRows() {
   const rows = [];
-  for (const e of state.log) e.sets.forEach((x, i) => { if (!emptySet(x)) rows.push({ entry: e, idx: i, date: e.date, ex: e.ex, w: x.w, r: x.r }); });
+  for (const e of state.log) e.sets.forEach((x, i) => { if (!emptySet(x)) rows.push({ entry: e, idx: i, date: e.date, ex: e.ex, w: x.w, r: x.r, l: x.l ?? null }); });
   return rows;
 }
 export function exportCSV() {
   const esc = v => (/[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v));
-  const lines = [['date', 'exercise', 'set', `weight_${unit()}`, 'reps'].join(',')];
+  // reps is the set's total; single-arm/leg sets also give each side
+  const lines = [['date', 'exercise', 'set', `weight_${unit()}`, 'reps', 'reps_right', 'reps_left'].join(',')];
   const rows = setRows().sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.ex < b.ex ? -1 : a.ex > b.ex ? 1 : a.idx - b.idx));
-  for (const r of rows) lines.push([r.date, esc((ex(r.ex) || { name: r.ex }).name), r.idx + 1, r.w ?? '', r.r ?? ''].join(','));
+  for (const r of rows) {
+    const sides = r.l != null;
+    lines.push([r.date, esc((ex(r.ex) || { name: r.ex }).name), r.idx + 1, r.w ?? '', sides ? (r.r || 0) + r.l : r.r ?? '', sides ? r.r ?? '' : '', sides ? r.l : ''].join(','));
+  }
   return lines.join('\n');
 }
 export { today };

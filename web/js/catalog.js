@@ -52,6 +52,23 @@ export const credit = (e, key) => {
   return e.p.some(z => zs.includes(z)) ? 1 : e.s.some(z => zs.includes(z)) ? 0.5 : 0;
 };
 
+/**
+ * Single-arm and single-leg lifts, where each set is logged as right and left reps. Found by name, and by the
+ * source's id too, because some display names drop the "One-Arm" (the catalog's "Dumbbell Row" is a one-arm row).
+ * "Alternating" counts too, except in core work (heel touchers, twists). You can change it per exercise.
+ */
+const SINGLE = /\b(one|single)[- ]?(arm(ed)?|hand(ed)?|leg(ged)?)\b|\bunilateral\b|\bbulgarian\b|\bpistol\b|\bsplit squat|\blunges?\b|\bstep[- ]?ups?\b|\bconcentration curls?\b/i;
+const groupOf = e => e.group || (e.p && e.p[0] && muscleById.get(e.p[0]) ? muscleById.get(e.p[0]).group : '');
+const words = e => `${e.id || ''} ${e.name || ''}`.replace(/_/g, ' ');
+export const autoSingle = e => SINGLE.test(words(e)) || (/\balternat(e|ing)\b/i.test(words(e)) && groupOf(e) !== 'Core');
+/** 'arm' or 'leg': what a single-side lift works one at a time. */
+export const sideKind = e => {
+  const s = words(e);
+  if (/\b(arm(ed)?|hand(ed)?)\b/i.test(s)) return 'arm';
+  if (/\b(leg(ged)?|lunges?|squats?|step[- ]?ups?|pistol|bulgarian|calf|glute)\b/i.test(s)) return 'leg';
+  return groupOf(e) === 'Legs' ? 'leg' : 'arm';
+};
+
 export const meta = e => [EQ[e.eq], e.mech ? e.mech[0].toUpperCase() + e.mech.slice(1) : null, KIND[e.kind]].filter(Boolean).join(' · ');
 export const short = id => (muscleById.get(id) || { short: id }).short;
 export const primaryLine = e => e.p.map(short).join(' + ');

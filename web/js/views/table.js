@@ -4,7 +4,7 @@ import { h, icon, today, num, fmt, download } from '../util.js';
 import { toast, confirmButton } from '../ui.js';
 import * as store from '../store.js';
 import * as cat from '../catalog.js';
-import { e1rm } from '../metrics.js';
+import { e1rm, setOf } from '../metrics.js';
 
 const PAGE = 150;
 const COLS = [
@@ -35,12 +35,17 @@ export function mount(root, ctx, params = {}) {
   const aEx = h('select', { class: 'input select', 'aria-label': 'Exercise for the new row' });
   const aW = h('input', { class: 'input n', type: 'number', inputMode: 'decimal', step: 'any', min: 0, placeholder: 'weight', 'aria-label': 'Weight' });
   const aR = h('input', { class: 'input n', type: 'number', inputMode: 'numeric', step: 1, min: 0, placeholder: 'reps', 'aria-label': 'Reps' });
+  // single-arm/leg lifts: the reps box is the right side, and a left one appears beside it
+  const aL = h('input', { class: 'input n', type: 'number', inputMode: 'numeric', step: 1, min: 0, placeholder: 'left', 'aria-label': 'Reps, left', hidden: true });
+  const sideBoxes = () => { const one = !!aEx.value && store.isSingle(aEx.value); aL.hidden = !one; aR.placeholder = one ? 'right' : 'reps'; aR.setAttribute('aria-label', one ? 'Reps, right' : 'Reps'); };
+  aEx.addEventListener('change', sideBoxes);
   const addRow = () => {
-    if (!aEx.value || !aDate.value || !aR.value) { toast('Pick an exercise and a date, and enter the reps.'); return; }
-    store.addSet(aEx.value, aDate.value, { w: aW.value === '' ? null : +aW.value, r: +aR.value });
-    aR.value = ''; aR.focus();
+    const one = !aL.hidden;
+    if (!aEx.value || !aDate.value || !(aR.value || (one && aL.value))) { toast('Pick an exercise and a date, and enter the reps.'); return; }
+    store.addSet(aEx.value, aDate.value, { w: aW.value === '' ? null : +aW.value, r: aR.value === '' ? null : +aR.value, ...(one && aL.value !== '' ? { l: +aL.value } : {}) });
+    aR.value = ''; aL.value = ''; aR.focus();
   };
-  [aW, aR].forEach(inp => inp.addEventListener('keydown', e => { if (e.key === 'Enter') addRow(); }));
+  [aW, aR, aL].forEach(inp => inp.addEventListener('keydown', e => { if (e.key === 'Enter') addRow(); }));
 
   root.replaceChildren(
     h('div', { class: 'page-head enter' },
@@ -50,7 +55,7 @@ export function mount(root, ctx, params = {}) {
         h('button', { class: 'btn sm', type: 'button', onclick: () => download(`lineup-log-${today()}.csv`, store.exportCSV(), 'text/csv') }, icon('download'), 'CSV'))),
     h('section', { class: 'glass box-panel enter', style: { '--i': 1 } },
       h('div', { class: 'box-toolbar' }, exSel, h('span', { class: 'grow' }),
-        h('div', { class: 'add-row' }, aDate, aEx, aW, h('span', { class: 'x' }, '×'), aR, h('button', { class: 'btn sm primary', type: 'button', onclick: addRow }, icon('plus'), 'Add set'))),
+        h('div', { class: 'add-row' }, aDate, aEx, aW, h('span', { class: 'x' }, '×'), aR, aL, h('button', { class: 'btn sm primary', type: 'button', onclick: addRow }, icon('plus'), 'Add set'))),
       h('div', { class: 'tbl-wrap' }, h('table', { class: 'tbl' }, h('thead', null, head), body)),
       more));
 
@@ -67,8 +72,11 @@ export function mount(root, ctx, params = {}) {
       active.length ? h('optgroup', { label: 'In your split' }, options(active, keep)) : null,
       others.length ? h('optgroup', { label: 'Other favorites and history' }, options(others, keep)) : null].filter(Boolean));
     if (!active.length && !others.length) aEx.append(h('option', { value: '' }, 'Add exercises to your split first'));
+    sideBoxes();
 
-    const rows = all.filter(r => !exFilter || r.ex === exFilter).map(r => ({ ...r, name: cat.exOr(r.ex).name, vol: (r.w || 0) * (r.r || 0), e1: r.w && r.r ? e1rm(r.w, r.r) : 0 }));
+    // a single-arm/leg set: volume counts both sides, Est. 1RM uses the reps per side (see setOf)
+    const measure = (r, w, R, L) => { const x = setOf({ w, r: R, l: L }, store.isSingle(r.ex)); return { vol: x && w ? w * x.total : 0, e1: x && w ? e1rm(w, x.r) : 0 }; };
+    const rows = all.filter(r => !exFilter || r.ex === exFilter).map(r => ({ ...r, name: cat.exOr(r.ex).name, ...measure(r, r.w, r.r, r.l) }));
     const { k, dir } = sort;
     rows.sort((a, b) => {
       const av = a[k] ?? -1, bv = b[k] ?? -1;
@@ -103,19 +111,23 @@ export function mount(root, ctx, params = {}) {
       const vol = h('td', { class: 'n num' }, r.w ? fmt.format(Math.round(r.vol)) : '—');
       const e1 = h('td', { class: 'n num' }, r.e1 ? fmt.format(Math.round(r.e1)) : '—');
       const recompute = () => {
-        const w = +wIn.value || 0, reps = +rIn.value || 0;
-        vol.textContent = w ? fmt.format(Math.round(w * reps)) : '—';
-        e1.textContent = w && reps ? fmt.format(Math.round(e1rm(w, reps))) : '—';
+        const m = measure(r, +wIn.value || 0, rIn.value === '' ? null : +rIn.value, lIn && lIn.value !== '' ? +lIn.value : null);
+        vol.textContent = m.vol ? fmt.format(Math.round(m.vol)) : '—';
+        e1.textContent = m.e1 ? fmt.format(Math.round(m.e1)) : '—';
       };
       const dIn = h('input', { class: 'cell date', type: 'date', value: r.date, 'aria-label': 'Date', onchange: () => { if (dIn.value && dIn.value !== r.date) store.moveSet(r.entry.id, r.idx, dIn.value); } });
       const wIn = h('input', { class: 'cell n', type: 'number', inputMode: 'decimal', step: 'any', min: 0, value: num(r.w), placeholder: '—', 'aria-label': 'Weight',
         onchange: () => { store.updateSet(r.entry.id, r.idx, { w: wIn.value === '' ? null : +wIn.value }); recompute(); } });
-      const rIn = h('input', { class: 'cell n', type: 'number', inputMode: 'numeric', step: 1, min: 0, value: r.r ?? '', 'aria-label': 'Reps',
+      const sides = r.l != null || store.isSingle(r.ex);
+      const rIn = h('input', { class: 'cell n', type: 'number', inputMode: 'numeric', step: 1, min: 0, value: r.r ?? '', 'aria-label': sides ? 'Reps, right' : 'Reps', title: sides ? 'Right' : null,
         onchange: () => { store.updateSet(r.entry.id, r.idx, { r: rIn.value === '' ? null : +rIn.value }); recompute(); } });
+      // right and left for single-arm/leg lifts (an older set with one number fills in the left as the same)
+      const lIn = sides ? h('input', { class: 'cell n', type: 'number', inputMode: 'numeric', step: 1, min: 0, value: r.l ?? '', placeholder: r.r ?? '—', 'aria-label': 'Reps, left', title: 'Left',
+        onchange: () => { store.updateSet(r.entry.id, r.idx, { l: lIn.value === '' ? null : +lIn.value }); recompute(); } }) : null;
       return h('tr', null,
         h('td', null, dIn),
         h('td', null, h('button', { class: 'link', type: 'button', onclick: () => ctx.openExercise(r.ex) }, r.name)),
-        h('td', { class: 'n num' }, r.idx + 1), h('td', { class: 'n' }, wIn), h('td', { class: 'n' }, rIn), vol, e1,
+        h('td', { class: 'n num' }, r.idx + 1), h('td', { class: 'n' }, wIn), h('td', { class: 'n' }, sides ? h('span', { class: 'lr' }, rIn, h('span', { class: 'sl' }, '/'), lIn) : rIn), vol, e1,
         h('td', { class: 'act' }, h('button', { class: 'btn xs ghost icon-btn danger', type: 'button', 'aria-label': 'Delete this set', title: 'Delete this set',
           onclick: () => { const undo = store.deleteSet(r.entry.id, r.idx); toast('Set deleted', { label: 'Undo', fn: undo }); } }, icon('trash'))));
     }));

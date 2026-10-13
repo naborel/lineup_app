@@ -9,11 +9,12 @@
 // 3 sets of 11, 10, 6 → 12, 11, 8 at the same weight raises all of them.
 import { h, icon, fmt, num } from './util.js';
 import * as store from './store.js';
-import { stats, setsLabel, setLabel, change, heavier } from './metrics.js';
+import { stats, setsLabel, setLabel, change, heavier, repsText } from './metrics.js';
 
 /** Sessions with at least one completed set, oldest first: [{date, entry, st}] */
 export function series(exId) {
-  return store.entriesOf(exId).map(entry => ({ date: entry.date, entry, st: stats(entry) })).filter(x => x.st.n > 0);
+  const single = store.isSingle(exId);
+  return store.entriesOf(exId).map(entry => ({ date: entry.date, entry, st: stats(entry, single) })).filter(x => x.st.n > 0);
 }
 
 /**
@@ -26,10 +27,10 @@ export function bestEver(ser) {
   return top;
 }
 /** A session's best set as text: "225 × 12", or "15 reps" for bodyweight work */
-export const setText = st => (st.heavy.w ? `${num(st.heavy.w)} × ${st.heavy.r}` : `${st.heavy.r} reps`);
+export const setText = st => setLabel(st.heavy);
 
 export const volumeLabel = st => (st.weighted ? `${fmt.format(Math.round(st.volume))} ${store.unit()}` : `${st.reps} reps`);
-export const bestLabel = st => (st.best ? (st.weighted ? `${fmt.format(Math.round(st.best.e1))} ${store.unit()}` : `${st.best.r} reps`) : '—');
+export const bestLabel = st => (st.best ? (st.weighted ? `${fmt.format(Math.round(st.best.e1))} ${store.unit()}` : `${repsText(st.best)} reps`) : '—');
 
 /** "19 reps", and what it's at: "Reps at 225" (or "Reps" for bodyweight work). */
 export const repsLabel = st => `${st.work.reps} ${st.work.reps === 1 ? 'rep' : 'reps'}`;
