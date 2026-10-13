@@ -1,0 +1,7 @@
+# Same line endings everywhere (Windows, the Mac, the cloud), so a file only shows as changed when it did change.
+* text=auto eol=lf
+*.woff2 binary
+# Built or generated: GitHub folds these in diffs and leaves them out of the language stats.
+Lineup.html linguist-generated=true
+data/*.json linguist-generated=true
+tools/body_raw.json linguist-generated=true

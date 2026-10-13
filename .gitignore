@@ -1,0 +1,5 @@
+tools/cache/
+node_modules/
+__pycache__/
+*.tmp
+.idea/
