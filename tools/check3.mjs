@@ -43,7 +43,7 @@ ok('a helper on top of direct work counts 30%: 1.15, and three of them 1.45', by
 ok('one direct lift plus three helpers stays short of two direct lifts', by('One direct lift, and three helpers').sw !== by('Two direct').sw && +by('One direct lift, and three helpers').n < 2);
 ok('three helpers are held at 0.6 (from 1.5)', by('Three helpers').n === '0.6' && /1\.5/.test(by('Three helpers').held), by('Three helpers').held);
 ok('helped-only colour on the model matches the example and differs from one direct lift', by('Three helpers').sw === three && by('One direct lift').sw !== three, `${three} vs once ${by('One direct lift').sw}`);
-ok('science page has 10 cards and working source links', (await p.$$('.sci-card')).length === 10 && (await p.$$('.sci-src a[href^="https://"]')).length >= 15);
+ok('science page has 11 cards and working source links', (await p.$$('.sci-card')).length === 11 && (await p.$$('.sci-src a[href^="https://"]')).length >= 15);
 if (out) { await p.screenshot({ path: `${out}/s2-science.png` }); await p.screenshot({ path: `${out}/s3-science-full.png`, fullPage: true }); }
 
 // back on Split: add a direct lift and the muscle joins the red scale, helpers counting on top

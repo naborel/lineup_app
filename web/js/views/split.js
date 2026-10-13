@@ -12,6 +12,7 @@ import { unit } from '../tiles.js';
 import { openPicker } from '../picker.js';
 import { loadSample } from '../sample.js';
 import { splitsCard } from '../splits.js';
+import { openOptimize } from './optimizeSheet.js';
 
 const sets = n => (Math.round(n * 10) / 10) + (n === 1 ? ' set' : ' sets');
 
@@ -103,8 +104,10 @@ export function mount(root, ctx) {
   const daysCard = h('section', { class: 'glass days enter', style: { '--i': 2 } }, empty, lanes);
   const covList = h('div', { class: 'cov-cols' });
   const covScope = h('span', { class: 'chip scope' }), covSub = h('div', { class: 'sub' });
+  // Optimize sets: proposes sets per exercise from what each muscle gets; you choose what to apply
+  const optBtn = h('button', { class: 'btn sm opt-btn', type: 'button', title: 'Propose how many sets each exercise gets, from the sets each muscle gets. Nothing changes until you apply it.', onclick: () => openOptimize() }, icon('sliders'), 'Optimize sets');
   const covCard = h('section', { class: 'glass cov-card enter', style: { '--i': 3 } },
-    h('div', { class: 'cover-head' }, h('div', { class: 'ss-t' }, 'By muscle'), covScope, covSub),
+    h('div', { class: 'cover-head' }, h('div', { class: 'ss-t' }, 'By muscle'), covScope, covSub, optBtn),
     covList);
 
   const summary = h('div', { class: 'sub' });
@@ -241,6 +244,7 @@ export function mount(root, ctx) {
     summary.replaceChildren(h('b', { class: 'split-name' }, store.splitName(store.activeSplit())), ' · ', ...(count ? [h('b', null, training), ` training ${training === 1 ? 'day' : 'days'} · `, h('b', null, count), ` exercises · `, h('b', null, twice), ` of ${ms.length} muscles hit directly twice or more`,
       missed.length ? ` · ${missed.length} with no direct work` : ''] : ['Eight slots. Fill the days you train and leave the rest empty.']));
     clearBtn.disabled = !count;
+    optBtn.disabled = !count;
 
     empty.hidden = !!count;
     if (!count) empty.replaceChildren(...[

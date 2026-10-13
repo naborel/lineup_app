@@ -79,6 +79,7 @@ export const ICONS = {
   upload: S('<path d="M8 10.4V3M4.9 6.1 8 3l3.1 3.1M3 13.2h10"/>'),
   archive: S('<rect x="2.5" y="3" width="11" height="3.2" rx="1"/><path d="M3.5 6.2v6.3h9V6.2M6.5 9h3"/>'),
   table: S('<rect x="2.5" y="3" width="11" height="10" rx="1.6"/><path d="M2.5 6.6h11M2.5 9.8h11M6.4 6.6V13"/>'),
+  sliders: S('<path d="M2.8 4.5h6.4M12.4 4.5h.8M2.8 11.5h.8M6.8 11.5h6.4"/><circle cx="10.8" cy="4.5" r="1.6"/><circle cx="5.2" cy="11.5" r="1.6"/>'),
   chart: S('<path d="M2.8 12.8h10.4M3.5 10.5l3-3.4 2.4 2 3.6-4.6"/>'),
   repeat: S('<path d="M3 7.5V6.2A2.2 2.2 0 0 1 5.2 4H12M10.2 2.2 12 4l-1.8 1.8M13 8.5v1.3a2.2 2.2 0 0 1-2.2 2.2H4M5.8 13.8 4 12l1.8-1.8"/>'),
   body: S('<circle cx="8" cy="3.4" r="1.5"/><path d="M4 6.2h8M8 6.2v4M8 10.2l-2 3.6M8 10.2l2 3.6"/>'),

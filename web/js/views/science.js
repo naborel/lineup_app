@@ -16,6 +16,7 @@ const SRC = {
   armsWomen: ['Barbalho and colleagues, 2018: adding single-joint exercises in untrained women', 'https://pure.solent.ac.uk/en/publications/the-influence-of-adding-single-joint-exercise-to-a-multi-joint-re/'],
   armsMen: ['de França and colleagues, 2015: adding single-joint exercises in trained men', 'https://pure.solent.ac.uk/en/publications/the-effects-of-adding-single-joint-exercises-to-a-multi-joint-exe/'],
   beardsley: ['Chris Beardsley: fatigue, volume and how often a muscle can be trained', 'https://www.patreon.com/posts/strength-102633917'],
+  krieger: ['Krieger, 2010: single versus multiple sets for muscle growth, pooled analysis', 'https://pubmed.ncbi.nlm.nih.gov/20300012/'],
   onerm: ['Reynolds, Gordon and Robergs, 2006: predicting a one-rep max from multi-rep sets', 'https://www.unm.edu/~rrobergs/478RMStrengthPrediction.pdf'],
 };
 
@@ -111,6 +112,18 @@ const TOPICS = () => [
     ],
     sources: ['dose'],
     change: [code('coverage()'), ' in ', code('web/js/metrics.js'), '. Weighting the colour by sets is a possible next step.'],
+  },
+  {
+    id: 'optimize', title: 'Optimize sets: per muscle, not per exercise', rating: 'direction',
+    does: [p('Optimize sets (on the By muscle card) proposes sets per exercise. Every exercise starts at 3, or more where you planned more. Sets come off, down to 2, where the muscles it trains still get your aim from the rest of the split (helpers counting half), and no muscle goes under 3 direct sets. More than 11 sets for a muscle in one session count as spare. Isolation lifts and ones later in the day are trimmed first. Nothing changes until you apply it.')],
+    says: [
+      p('Growth follows the hard sets a muscle gets, not how they are shared between exercises. In a pooled analysis of 67 studies, more weekly sets meant more growth with shrinking returns, from about 4 half-counted sets a week as the least that reliably works, with no clear ceiling as far as the data goes (few studies pass about 25).'),
+      p('Within one session, a pooled analysis found no detectable extra growth past about 11 half-counted sets for a muscle, and no extra strength past about 2 direct sets.'),
+      p('Per exercise, 2 to 3 sets gave about 40% more than 1 set in an older pooled analysis, levelling off around 4 to 6. Nothing separates 2 sets from 3 when the muscle gets work elsewhere.'),
+      p('The aim (4 to 12) is your trade between time and growth. The 3-direct-set floor and the trimming order are this app’s choices.'),
+    ],
+    sources: ['dose', 'session', 'krieger'],
+    change: [code('optimize()'), ' in ', code('web/js/optimize.js'), '.'],
   },
   {
     id: 'zones', title: 'Parts of a muscle are separate zones', rating: 'tested',

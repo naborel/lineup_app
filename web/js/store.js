@@ -222,6 +222,15 @@ export function setItemSets(di, itemId, sets) {
   item.sets = Math.max(1, Math.min(12, Math.round(sets)));
   commit();
 }
+/** Set several exercises' planned sets at once (Optimize sets): [{di, id, to}]. Undoable. */
+export function applySets(changes) {
+  return undoable(() => {
+    for (const c of changes) {
+      const item = state.days[c.di] && state.days[c.di].items.find(it => it.id === c.id);
+      if (item) item.sets = Math.max(1, Math.min(12, Math.round(c.to)));
+    }
+  });
+}
 export function setDayName(di, name) { state.days[di].name = name; commit(true); }
 export function clearSplit() { return undoable(() => { state.days.forEach(d => { d.items = []; d.name = ''; }); }); }
 /**
