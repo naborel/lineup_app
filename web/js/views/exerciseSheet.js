@@ -118,10 +118,13 @@ export function showExercise(id, ctx) {
         h('div', { class: 'chart-head' }, h('span', { class: 'h-section' }, 'Volume'),
           h('span', { class: 'sub' }, store.volumeView() === 'sets' ? `weight × reps, set for set (${u})` : `weight × reps, all sets as logged (${u})`),
           (pair => pair ? deltaChip(pair[0], pair[1]) : null)(lastVolumePair(ser))),
-        // set for set (fewer sets never count against you) or every set as logged; Track and Trends follow the same switch
+        // every set as logged (the default) or set for set, for when doing fewer sets looks like a dip.
+        // One switch for the whole app: every exercise, Track and Trends follow it
         h('div', { class: 'vol-view-row' },
-          seg([{ value: 'sets', label: 'Set for set' }, { value: 'logged', label: 'As logged' }], store.volumeView(), v => store.setPref('volumeView', v, false), 'small vol-view'),
-          h('span', { class: 'sub' }, store.volumeView() === 'sets' ? 'Fewer sets never count against you; more count for you. A hollow dot is a one-off short session.' : 'Every set counts as it was done, so fewer sets show as less volume.')),
+          seg([{ value: 'logged', label: 'As logged' }, { value: 'sets', label: 'Set for set' }], store.volumeView(), v => store.setPref('volumeView', v, false), 'small vol-view'),
+          h('span', { class: 'sub' }, store.volumeView() === 'sets'
+            ? 'Fewer sets than before don’t count against you; more do count. A hollow dot is a one-off short session. Applies to every exercise and Trends.'
+            : 'A dip from doing fewer sets? Set for set compares sessions on the same number of sets. Applies to every exercise and Trends.')),
         lineChart(volumePoints(ser))) : null,
       h('div', { class: 'chart-block' },
         h('div', { class: 'chart-head' }, h('span', { class: 'h-section' }, weighted ? 'Est. 1RM' : 'Most reps'), h('span', { class: 'sub' }, weighted ? `each session’s strongest set as a one-rep max (${store.unit()})` : 'most reps in one set'),

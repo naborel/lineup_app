@@ -85,12 +85,12 @@ Each card shows three things: Best set, Volume trend and Est. 1RM.
 
 Going from 11, 10, 6 to 12, 11, 8 at the same weight raises all three. Sessions with no weight are treated as bodyweight: the reps are all of them and the best set is the one with the most reps. The volume itself (4,275 lb) isn't shown on the card, because nobody knows whether that's good; the trend is. It has its own chart in the details.
 
-**Set for set.** Volume is compared set for set, so the trend follows how you did, not how many sets you planned. Doing fewer sets never counts against you; doing more counts for you:
+**Set for set** (a switch, off to start with: volume counts every set as logged). If a dip comes from doing fewer sets, not from doing worse, switch the Volume chart in an exercise's details to **Set for set**. It compares sessions set for set, so the trend follows how you did, not how many sets you planned. Doing fewer sets never counts against you; doing more counts for you:
 - An earlier session counts no more sets than you've done in any session since, using its best ones (the most weight × reps). Cut a lift from 3 sets to 2 and your 2 are compared with the best 2 of each earlier session, so the cut doesn't read as a drop.
 - A one-off short session (fewer sets than the sessions either side of it, or, while it's the latest, than both of the two before it, which includes a workout you're still logging) is shown as logged but left out of the trend: a hollow dot on the Volume chart, and a note in the history.
 - More sets count in full for as long as you keep doing them; a one-off extra set counts while it's the latest.
 - The Track card says when it applies (*best 2 sets each*, or *fewer sets: left out*), and the history marks which sessions were counted on fewer sets.
-- The switch is on the Volume chart in an exercise's details (**Set for set** / **As logged**) and in the status menu. *As logged* counts every set as it was done, everywhere. Best set and Est. 1RM aren't affected either way.
+- It's one switch for the whole app (every exercise, Track and Trends), on the Volume chart in any exercise's details: **As logged** (the default) or **Set for set**. Best set and Est. 1RM aren't affected either way.
 
 **Single arm, single leg.** Lifts done one side at a time (a one-arm dumbbell row, a Bulgarian split squat, alternating curls) carry a small *Single arm* or *Single leg* label under their name, and each set is weight × **R** reps and **L** reps: `70 × 10/9`. They're found by name; the **Single arm / Single leg** switch in an exercise's details turns it on or off for that lift. How they're measured:
 - Volume and total reps count both sides: 70 × 10/9 is 19 reps and 1,330 lb.

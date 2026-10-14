@@ -18,7 +18,8 @@ export function series(exId) {
 }
 
 /**
- * Volume compared set for set, so the trend follows how you did, not how many sets you planned. Doing fewer sets
+ * Volume compared set for set (a switch, off to start with: the default counts every set as logged), so the trend follows how you
+ * did, not how many sets you planned. Doing fewer sets
  * never counts against you; doing more counts for you:
  *   - an earlier session counts no more sets than you've done in any session since: its best ones (the most
  *     weight × reps). Going from 3 sets to 2 compares your 2 with the best 2 of each earlier session;
@@ -26,7 +27,7 @@ export function series(exId) {
  *     of the two before it, which includes a workout still being logged) is shown as logged and left out of the
  *     trend. Going back to your usual sets after a one-off extra set isn't short;
  *   - more sets count in full for as long as you keep doing them (a one-off extra set counts while it's the latest).
- * 'logged' (the switch in the status menu or on the Volume chart) counts every set as it was done.
+ * 'logged' (the default; the switch is on the Volume chart in an exercise's details) counts every set as done.
  * Adds x.cv = {vol, n: sets done, counted, short, dropped: [the sets not counted, as text]} to each session.
  */
 export function compareVolume(ser, mode = store.volumeView()) {
