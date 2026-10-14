@@ -148,6 +148,7 @@ What the app assumes, where each assumption comes from, how far to trust it, and
 
 ```
 app.py                  build Lineup.html (and the dev server)
+TODO.md                 open UX and quality-of-life decisions
 Lineup.html             the app (built)
 web/index.html          page shell
 web/css/app.css         styles: Draftboard's foundations + Lineup's components
